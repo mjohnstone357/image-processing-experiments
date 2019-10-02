@@ -1,0 +1,1 @@
+A project to play around with image processing
