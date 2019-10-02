@@ -1,5 +1,8 @@
 module Lib
-    ( processVideo
+    ( showVideo,
+      readVideo,
+      Video(..),
+      Frame(..)
     ) where
 
 import qualified Data.ByteString.Lazy as B
@@ -13,11 +16,23 @@ data Video = Video {
   frames :: [Frame]
   } deriving (Show)
 
-data Frame = Frame B.ByteString
-           deriving (Show)
+data Frame = Frame {
+  yPlane :: B.ByteString,
+  cbPlane :: B.ByteString,
+  crPlane :: B.ByteString
+  } deriving (Show)
 
-processVideo :: B.ByteString -> B.ByteString
-processVideo = showVideo . transformVideo . readVideo
+splitToFrame :: Int -> Int -> B.ByteString -> Frame
+splitToFrame width height bytes =
+  let numberOfPixels = fromIntegral $ width * height
+      (yPlane', remaining) = B.splitAt numberOfPixels bytes
+      (cbPlane', crPlane') = B.splitAt (numberOfPixels `div` 4) remaining
+  in
+    Frame {
+    yPlane = yPlane',
+    cbPlane = cbPlane',
+    crPlane = crPlane'
+    }
 
 extractHeader :: B.ByteString -> [B.ByteString] -> B.ByteString
 extractHeader prefix headers =
@@ -37,33 +52,36 @@ readVideo inputBytes =
     heightPixels = hPixels,
     colourSpace = cSpace,
     headerMagic = B.concat [header, C.pack "\n"],
-    frames = readAllFrames frameLength remainingInput
+    frames = readAllFrames wPixels hPixels frameLength remainingInput
     }
 
-readAllFrames :: Int -> B.ByteString -> [Frame]
-readAllFrames frameLength inputBytes =
+readAllFrames :: Int -> Int -> Int -> B.ByteString -> [Frame]
+readAllFrames width height frameLength inputBytes =
   if frameMarker `B.isPrefixOf` inputBytes
   then
-    let (currentFrame, remainingBytes) = readOneFrame frameLength inputBytes
-    in currentFrame : readAllFrames frameLength remainingBytes
+    let (currentFrame, remainingBytes) = readOneFrame width height frameLength inputBytes
+    in currentFrame : readAllFrames width height frameLength remainingBytes
   else
     error $ "Did not find frame marker, instead found: " ++ (show (B.take 100 inputBytes))
 
-readOneFrame ::Int ->  B.ByteString -> (Frame, B.ByteString)
-readOneFrame frameLength inputBytes =
+readOneFrame :: Int -> Int -> Int ->  B.ByteString -> (Frame, B.ByteString)
+readOneFrame width height frameLength inputBytes =
   let (Just prefixDropped) = B.stripPrefix frameMarker inputBytes
       (currentFrameBytes, remainingFramesBytes) = B.splitAt (fromIntegral frameLength) prefixDropped
   in
-    (Frame currentFrameBytes, remainingFramesBytes)
+    (splitToFrame width height currentFrameBytes, remainingFramesBytes)
 
 showVideo :: Video -> B.ByteString
 showVideo video = B.concat $ [headerMagic video] ++ (map showFrame (frames video))
 
 showFrame :: Frame -> B.ByteString
-showFrame (Frame frameBytes) = B.concat [initialFrameMarker, B.pack [fromIntegral (0x0A :: Int)], frameBytes]
-
-transformVideo :: Video -> Video
-transformVideo = id
+showFrame frame = B.concat [
+  initialFrameMarker,
+  B.pack [fromIntegral (0x0A :: Int)],
+  yPlane frame,
+  cbPlane frame,
+  crPlane frame
+  ]
 
 getHeaderWords :: [B.ByteString] -> B.ByteString -> ([B.ByteString], B.ByteString)
 getHeaderWords existingWords inputBytes =
