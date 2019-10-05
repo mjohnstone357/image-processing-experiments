@@ -28,6 +28,7 @@ splitToFrame width height bytes =
       (yPlane', remaining) = B.splitAt numberOfPixels bytes
       (cbPlane', crPlane') = B.splitAt (numberOfPixels `div` 4) remaining
   in
+--    error $ "plane length is " ++ (show (B.length crPlane'))
     Frame {
     yPlane = yPlane',
     cbPlane = cbPlane',

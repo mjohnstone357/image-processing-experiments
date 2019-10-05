@@ -14,7 +14,7 @@ extra-source-files:
 # synopsis:            Short description of your package
 # category:            Web
 
-# To avoid duplicated efforts in documentation and dealing with the
+# To avoid duplicated efforts in documentation and dealing with theLi	
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
 description:         Please see the README on GitHub at <https://github.com/githubuser/image-processing-experiments#readme>
@@ -26,6 +26,7 @@ library:
   source-dirs: src
   dependencies:
   - bytestring
+  - array
   ghc-options:
   - -Wall
 
