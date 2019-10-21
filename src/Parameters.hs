@@ -1,7 +1,7 @@
 module Parameters where
 
 boxWidth :: Int
-boxWidth = 2
+boxWidth = 8
 
 boxHeight :: Int
-boxHeight = 2
+boxHeight = 8

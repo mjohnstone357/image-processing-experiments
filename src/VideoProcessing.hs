@@ -8,29 +8,71 @@ import Lib(showVideo, readVideo, Video(..), Frame(..))
 import Detection
 import Parameters(boxWidth, boxHeight)
 
-processVideo :: B.ByteString -> B.ByteString
-processVideo = showVideo . transformVideo . readVideo
+data DebuggableVideo = DebuggableVideo {
+  vid :: Video,
+  debugStream :: [String]
+  }
 
-transformVideo :: Video -> Video
+transformVideo :: Video -> DebuggableVideo
 transformVideo video =
   let oldFrames = (frames video) :: [Frame]
       frameWindows = (slidingWindow oldFrames) :: [(Frame, Frame)]
       width = widthPixels video
       height = heightPixels video
-      annotatedFrames = map (annotatedFrame width height) frameWindows
+      initialTTLArray' = initialTTLArray width height
+      framesWithDebugging = getAnnotatedFrames width height initialTTLArray' frameWindows
+      annotatedFrames = map fst framesWithDebugging
   in
-    video{frames = annotatedFrames}
+    DebuggableVideo {
+    vid = video{frames = annotatedFrames},
+    debugStream = map snd framesWithDebugging
+    }
 
-annotatedFrame :: Int -> Int -> (Frame, Frame) -> Frame
-annotatedFrame width height (frame1, frame2) =
+initialTTLArray :: Int -> Int -> Array (Int, Int) Int
+initialTTLArray width height =
+  let horizontalBoxes = width `div` boxWidth
+      verticalBoxes = height `div` boxHeight
+      bounds' = ((0, 0), (horizontalBoxes - 1, verticalBoxes - 1))
+      zeroes = repeat 0
+      indices' = range bounds'
+      values' = zip indices' zeroes
+  in
+    array bounds' values'
+
+getAnnotatedFrames :: Int -> Int -> Array (Int, Int) Int -> [(Frame, Frame)] -> [(Frame, String)]
+getAnnotatedFrames _ _ _ [] = []
+getAnnotatedFrames width height ttlArray ((frame1, frame2):pairs) =
+  let currentMovementArray = computeMovementArray width height (frame1, frame2)
+      newTTLArray = renewTTLs ttlArray currentMovementArray
+      highlightsArray = resolveTTLs newTTLArray
+      newFrame = transformFrame width height highlightsArray frame2
+  in
+    (newFrame, "foo") : (getAnnotatedFrames width height newTTLArray pairs)
+
+resolveTTLs :: Array (Int, Int) Int -> Array (Int, Int) Bool
+resolveTTLs = fmap (\x -> x > 0)
+
+-- Yields an array indicating whether there was movement in each box
+computeMovementArray :: Int -> Int -> (Frame, Frame) -> Array (Int, Int) Bool
+computeMovementArray width height (frame1, frame2) =
   let movementArray = movementBetweenFrames width height frame1 frame2
       indices' = indices movementArray
       bounds' = bounds movementArray
       highlights = map (movementDifferentToNeighbours movementArray) indices'
-      highlightsArray = array bounds' (zip indices' highlights)
---      highlightsArray = array bounds' [((x,y), x > 10 && x < 40 && y > 35 && y < 70) | (x,y) <- indices']
+      highlightsArray = (array bounds' (zip indices' highlights)) :: Array (Int, Int) Bool
   in
-    transformFrame width height highlightsArray frame2
+    highlightsArray
+  
+renewTTLs :: Array (Int, Int) Int -> Array (Int, Int) Bool -> Array (Int, Int) Int
+renewTTLs ttlArray movementsArray =
+  let bounds' = bounds ttlArray
+      indices' = indices ttlArray
+      ttlValues = elems ttlArray
+      movementValues = elems movementsArray
+      newElems = zipWith (\ttl movement -> if movement then min (ttl + 8) 32 else ttl `div` 2)
+        ttlValues movementValues
+  in
+    array bounds' (zip indices' newElems)
 
 movementDifferentToNeighbours :: Array (Int, Int) Vector -> (Int, Int) -> Bool
 movementDifferentToNeighbours arr (x, y) =
@@ -44,15 +86,17 @@ movementDifferentToNeighbours arr (x, y) =
         ]
       neighbourVectors = (map (\ix -> arr ! ix) neighbourIndices) :: [Vector]
   in
---    any (vectorsSignificantlyDifferent thisVector) neighbourVectors
-    magnitude thisVector > 5 -- && direction thisVector > 0.6 && direction thisVector < 1.2
+    any (vectorsSignificantlyDifferent thisVector) neighbourVectors
+--    magnitude thisVector > 5 -- && direction thisVector > 0.6 && direction thisVector < 1.2
+
+-- TODO somehow "subtract" the prevailing movement from the vectors
+subtractVector :: Vector -> Vector -> Vector
+subtractVector = undefined
 
 vectorsSignificantlyDifferent :: Vector -> Vector -> Bool
 vectorsSignificantlyDifferent v1 v2 =
-  let minMagnitude = 2
-  in
-    magnitude v1 > minMagnitude && magnitude v2 > minMagnitude &&
-    abs (direction v1 - direction v2) > (pi / 2)
+  -- TODO We need to take the direction into account?
+  magnitude v1 > 22 && magnitude v2 < 22
 
 slidingWindow :: [a] -> [(a, a)]
 slidingWindow (x:y:xs) = (x, y) : slidingWindow (y:xs)
@@ -71,16 +115,6 @@ transformFrame width height highlightsArray frame =
     frame{
     cbPlane = cbPlane'
     }
-
--- transformPixel :: Int -> Array (Int, Int) Bool -> Int -> W.Word8 -> W.Word8
--- transformPixel width highlightsArray pixelFlatIndex word =
---   let effectiveWidth = width `div` 2
---   in
---     if pixelFlatIndex < effectiveWidth
---     then
---       reduceByte word
---     else
---       word
 
 transformPixel :: Int -> Array (Int, Int) Bool -> Int -> W.Word8 -> W.Word8
 transformPixel width highlightsArray pixelFlatIndex word =
