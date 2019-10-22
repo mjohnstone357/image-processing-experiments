@@ -8,25 +8,18 @@ import Lib(showVideo, readVideo, Video(..), Frame(..))
 import Detection
 import Parameters(boxWidth, boxHeight)
 
-data DebuggableVideo = DebuggableVideo {
-  vid :: Video,
-  debugStream :: [String]
-  }
+data DebugFrame = DebugFrame Frame String
 
-transformVideo :: Video -> DebuggableVideo
+transformVideo :: Video Frame -> Video DebugFrame
 transformVideo video =
   let oldFrames = (frames video) :: [Frame]
       frameWindows = (slidingWindow oldFrames) :: [(Frame, Frame)]
       width = widthPixels video
       height = heightPixels video
       initialTTLArray' = initialTTLArray width height
-      framesWithDebugging = getAnnotatedFrames width height initialTTLArray' frameWindows
-      annotatedFrames = map fst framesWithDebugging
+      debugFrames = getAnnotatedFrames width height initialTTLArray' frameWindows
   in
-    DebuggableVideo {
-    vid = video{frames = annotatedFrames},
-    debugStream = map snd framesWithDebugging
-    }
+    video {frames = debugFrames}
 
 initialTTLArray :: Int -> Int -> Array (Int, Int) Int
 initialTTLArray width height =
@@ -39,15 +32,18 @@ initialTTLArray width height =
   in
     array bounds' values'
 
-getAnnotatedFrames :: Int -> Int -> Array (Int, Int) Int -> [(Frame, Frame)] -> [(Frame, String)]
+getAnnotatedFrames :: Int -> Int -> Array (Int, Int) Int -> [(Frame, Frame)] -> [DebugFrame]
 getAnnotatedFrames _ _ _ [] = []
 getAnnotatedFrames width height ttlArray ((frame1, frame2):pairs) =
   let currentMovementArray = computeMovementArray width height (frame1, frame2)
       newTTLArray = renewTTLs ttlArray currentMovementArray
       highlightsArray = resolveTTLs newTTLArray
       newFrame = transformFrame width height highlightsArray frame2
+      numberOfHighlights = length $ filter id $ elems highlightsArray
+      message = "After TTL, there were " ++ (show numberOfHighlights) ++ " highlights"
+      debugFrame = DebugFrame newFrame message
   in
-    (newFrame, "foo") : (getAnnotatedFrames width height newTTLArray pairs)
+    debugFrame : (getAnnotatedFrames width height newTTLArray pairs)
 
 resolveTTLs :: Array (Int, Int) Int -> Array (Int, Int) Bool
 resolveTTLs = fmap (\x -> x > 0)

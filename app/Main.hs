@@ -1,19 +1,36 @@
 module Main where
 
 import qualified Data.ByteString.Lazy as B
-import Control.Concurrent
+import System.IO
 
-import Lib(readVideo, showVideo)
-import VideoProcessing(transformVideo, DebuggableVideo(..))
+import Lib(readVideo, showFrame, Video(..))
+import VideoProcessing(transformVideo, DebugFrame(..))
 
 main :: IO ()
 main = do
   input <- B.getContents
   let inputVideo = readVideo input
-      transformedVideo = transformVideo inputVideo
-      outputStream = showVideo (vid transformedVideo)
-      outputString = unlines (debugStream transformedVideo)
-  B.putStr outputStream
-  writeFile "/home/matt/extraction/debug.log" outputString
+      debuggableVideo = transformVideo inputVideo
+  outputDebugVideo debuggableVideo
 
--- TODO Use one thread to output the debug info and video stream
+outputDebugVideo :: Video DebugFrame -> IO ()
+outputDebugVideo video = do
+  let debugFrames = frames video
+  B.putStr $ headerMagic video
+  withFile "/home/matt/extraction/debug.log" WriteMode $
+    setModeAndOutput debugFrames
+
+setModeAndOutput :: [DebugFrame] -> Handle -> IO ()
+setModeAndOutput fs handle = do
+  hSetBuffering handle LineBuffering
+  outputFrames fs handle
+
+outputFrames :: [DebugFrame] -> Handle -> IO ()
+outputFrames fs handle = mapM_ (outputFrame handle) fs
+
+outputFrame :: Handle -> DebugFrame -> IO ()
+outputFrame handle frame = do
+  let (DebugFrame videoFrame message) = frame
+      frameBytes = showFrame videoFrame
+  B.putStr frameBytes
+  hPutStrLn handle message

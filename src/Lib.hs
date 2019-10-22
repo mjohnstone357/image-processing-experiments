@@ -1,6 +1,7 @@
 module Lib
     ( showVideo,
       readVideo,
+      showFrame,
       Video(..),
       Frame(..)
     ) where
@@ -8,12 +9,12 @@ module Lib
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Char8 as C
 
-data Video = Video {
+data Video f = Video {
   widthPixels :: Int,
   heightPixels :: Int,
   colourSpace :: ColourSpace,
   headerMagic :: B.ByteString,
-  frames :: [Frame]
+  frames :: [f]
   } deriving (Show)
 
 data Frame = Frame {
@@ -39,7 +40,7 @@ extractHeader :: B.ByteString -> [B.ByteString] -> B.ByteString
 extractHeader prefix headers =
   head $ filter (\header -> prefix `B.isPrefixOf` header) headers
 
-readVideo :: B.ByteString -> Video
+readVideo :: B.ByteString -> Video Frame
 readVideo inputBytes =
   let (headers, remainingInput) = getHeaderWords [] inputBytes
       header = B.intercalate (C.pack " ") headers
@@ -72,7 +73,7 @@ readOneFrame width height frameLength inputBytes =
   in
     (splitToFrame width height currentFrameBytes, remainingFramesBytes)
 
-showVideo :: Video -> B.ByteString
+showVideo :: Video Frame -> B.ByteString
 showVideo video = B.concat $ [headerMagic video] ++ (map showFrame (frames video))
 
 showFrame :: Frame -> B.ByteString
