@@ -8,8 +8,8 @@ import Lib(Video(..), Frame(..))
 import Detection
 import Parameters(boxWidth, boxHeight)
 import Vector(XYVector(..), renderFloat)
-import Highlighting(computeMovementArray)
-import TimeToLive(initialTTLArray, renewTTLs, resolveTTLs) -- TODO remove this dependency?
+import Highlighting(HighlightsArray(..), computeHighlights)
+import TimeToLive(initialTTLArray, TTLArray)
 
 data DebugFrame = DebugFrame Frame String
 
@@ -24,12 +24,11 @@ transformVideo video =
   in
     video {frames = debugFrames}
 
-getAnnotatedFrames :: Int -> Int -> Array (Int, Int) Int -> [(Frame, Frame)] -> [DebugFrame]
+getAnnotatedFrames :: Int -> Int -> TTLArray -> [(Frame, Frame)] -> [DebugFrame]
 getAnnotatedFrames _ _ _ [] = []
 getAnnotatedFrames width height ttlArray ((frame1, frame2):pairs) =
-  let currentMovementArray = computeMovementArray width height (frame1, frame2)
-      newTTLArray = renewTTLs ttlArray currentMovementArray
-      highlightsArray = resolveTTLs newTTLArray
+  let (highlightsArray, newTTLArray) = computeHighlights ttlArray width height (frame1, frame2)
+      
       newFrame = transformFrame width highlightsArray frame2
 
       movementArray = (xyMovementBetweenFrames width height frame1 frame2) :: Array (Int, Int) XYVector
@@ -46,7 +45,7 @@ slidingWindow (x:y:xs) = (x, y) : slidingWindow (y:xs)
 slidingWindow _ = []
 
 -- Takes an array indicating whether each box should be highlighted
-transformFrame :: Int -> Array (Int, Int) Bool -> Frame -> Frame
+transformFrame :: Int -> HighlightsArray -> Frame -> Frame
 transformFrame width highlightsArray frame =
   let
     pixelFlatIndices = [0..(length unpackedPixels)]
@@ -59,8 +58,8 @@ transformFrame width highlightsArray frame =
     cbPlane = cbPlane'
     }
 
-transformPixel :: Int -> Array (Int, Int) Bool -> Int -> W.Word8 -> W.Word8
-transformPixel width highlightsArray pixelFlatIndex word =
+transformPixel :: Int -> HighlightsArray -> Int -> W.Word8 -> W.Word8
+transformPixel width (HighlightsArray highlightsArray) pixelFlatIndex word =
   let effectiveIndexInFullImage = pixelFlatIndex * 2
       (pixelX, pixelY) = (effectiveIndexInFullImage `mod` width, effectiveIndexInFullImage `div` width)
       indexInHighlightsArray = (pixelX `div` boxWidth, 2 * pixelY `div` boxHeight)

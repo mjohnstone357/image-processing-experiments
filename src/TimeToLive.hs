@@ -3,8 +3,11 @@ module TimeToLive where
 import Data.Array
 
 import Parameters
+import Movement(MovementsArray(..))
 
-initialTTLArray :: Int -> Int -> Array (Int, Int) Int
+data TTLArray = TTLArray (Array (Int, Int) Int)
+
+initialTTLArray :: Int -> Int -> TTLArray
 initialTTLArray width height =
   let horizontalBoxes = width `div` boxWidth
       verticalBoxes = height `div` boxHeight
@@ -13,13 +16,10 @@ initialTTLArray width height =
       indices' = range bounds'
       values' = zip indices' zeroes
   in
-    array bounds' values'
+    TTLArray $ array bounds' values'
 
-resolveTTLs :: Array (Int, Int) Int -> Array (Int, Int) Bool
-resolveTTLs = fmap (\x -> x > 0)
-
-renewTTLs :: Array (Int, Int) Int -> Array (Int, Int) Bool -> Array (Int, Int) Int
-renewTTLs ttlArray movementsArray =
+renewTTLs :: TTLArray -> MovementsArray -> TTLArray
+renewTTLs (TTLArray ttlArray) (MovementsArray movementsArray) =
   let bounds' = bounds ttlArray
       indices' = indices ttlArray
       ttlValues = elems ttlArray
@@ -27,4 +27,4 @@ renewTTLs ttlArray movementsArray =
       newElems = zipWith (\ttl movement -> if movement then min (ttl + 8) 32 else ttl `div` 2)
         ttlValues movementValues
   in
-    array bounds' (zip indices' newElems)
+    TTLArray $ array bounds' (zip indices' newElems)
