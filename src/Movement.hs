@@ -5,13 +5,15 @@ import Data.Array
 import Lib(Frame(..))
 import Detection(movementBetweenFrames)
 import Vector(Vector(..))
+import Parameters(BoxDimensions)
 
 data MovementsArray = MovementsArray (Array (Int, Int) Bool)
 
--- Yields an array indicating whether there was movement in each box
-computeMovementArray :: Int -> Int -> (Frame, Frame) -> MovementsArray
-computeMovementArray width height (frame1, frame2) =
-  let movementArray = movementBetweenFrames width height frame1 frame2
+-- Yields an array indicating whether there was movement in each box, compared
+-- to the larger box surrounding it
+computeMovementArray :: BoxDimensions -> Int -> Int -> (Frame, Frame) -> MovementsArray
+computeMovementArray boxDimensions width height (frame1, frame2) =
+  let movementArray = movementBetweenFrames boxDimensions width height frame1 frame2
       indices' = indices movementArray
       bounds' = bounds movementArray
       movements = map (movementDifferentToNeighbours movementArray) indices'

@@ -5,9 +5,7 @@ import qualified Data.ByteString.Lazy as B
 import qualified Data.Word as W
 
 import Lib(Video(..), Frame(..))
-import Detection
-import Parameters(boxWidth, boxHeight)
-import Vector(XYVector(..), renderFloat)
+import Parameters(smallBox, BoxDimensions(..))
 import Highlighting(HighlightsArray(..), computeHighlights)
 import TimeToLive(initialTTLArray, TTLArray)
 
@@ -19,7 +17,7 @@ transformVideo video =
       frameWindows = (slidingWindow oldFrames) :: [(Frame, Frame)]
       width = widthPixels video
       height = heightPixels video
-      initialTTLArray' = initialTTLArray width height
+      initialTTLArray' = initialTTLArray smallBox width height
       debugFrames = getAnnotatedFrames width height initialTTLArray' frameWindows
   in
     video {frames = debugFrames}
@@ -30,11 +28,8 @@ getAnnotatedFrames width height ttlArray ((frame1, frame2):pairs) =
   let (highlightsArray, newTTLArray) = computeHighlights ttlArray width height (frame1, frame2)
       
       newFrame = transformFrame width highlightsArray frame2
-
-      movementArray = (xyMovementBetweenFrames width height frame1 frame2) :: Array (Int, Int) XYVector
-      csvVectors = map (\v -> renderFloat (xDelta v) ++ "," ++ renderFloat (yDelta v)) (elems movementArray)
       
-      message = "vectors for frame:\n" ++ (unlines csvVectors)
+      message = "no message"
       
       debugFrame = DebugFrame newFrame message
   in
@@ -62,7 +57,7 @@ transformPixel :: Int -> HighlightsArray -> Int -> W.Word8 -> W.Word8
 transformPixel width (HighlightsArray highlightsArray) pixelFlatIndex word =
   let effectiveIndexInFullImage = pixelFlatIndex * 2
       (pixelX, pixelY) = (effectiveIndexInFullImage `mod` width, effectiveIndexInFullImage `div` width)
-      indexInHighlightsArray = (pixelX `div` boxWidth, 2 * pixelY `div` boxHeight)
+      indexInHighlightsArray = (pixelX `div` (boxWidth smallBox), 2 * pixelY `div` (boxHeight smallBox))
   in
     if highlightsArray ! indexInHighlightsArray
     then

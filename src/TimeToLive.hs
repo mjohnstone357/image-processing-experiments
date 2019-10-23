@@ -7,10 +7,10 @@ import Movement(MovementsArray(..))
 
 data TTLArray = TTLArray (Array (Int, Int) Int)
 
-initialTTLArray :: Int -> Int -> TTLArray
-initialTTLArray width height =
-  let horizontalBoxes = width `div` boxWidth
-      verticalBoxes = height `div` boxHeight
+initialTTLArray :: BoxDimensions -> Int -> Int -> TTLArray
+initialTTLArray boxDimensions width height =
+  let horizontalBoxes = width `div` (boxWidth boxDimensions)
+      verticalBoxes = height `div` (boxHeight boxDimensions)
       bounds' = ((0, 0), (horizontalBoxes - 1, verticalBoxes - 1))
       zeroes = repeat 0
       indices' = range bounds'

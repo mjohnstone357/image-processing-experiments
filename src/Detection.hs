@@ -5,20 +5,20 @@ import qualified Data.ByteString.Lazy as B
 import Data.Word(Word8)
 
 import Lib(Frame(..))
-import Parameters(boxWidth, boxHeight)
+import Parameters(BoxDimensions(..))
 import Vector(Vector(..), XYVector(..), movementVector)
 
-xyMovementBetweenFrames :: Int -> Int -> Frame -> Frame -> Array (Int, Int) XYVector
-xyMovementBetweenFrames width height frame1 frame2 =
-  let centres1 = centresOfGravity width height frame1
-      centres2 = centresOfGravity width height frame2
+xyMovementBetweenFrames :: BoxDimensions -> Int -> Int -> Frame -> Frame -> Array (Int, Int) XYVector
+xyMovementBetweenFrames boxDimensions width height frame1 frame2 =
+  let centres1 = centresOfGravity boxDimensions width height frame1
+      centres2 = centresOfGravity boxDimensions width height frame2
   in
     movementXYVectors centres1 centres2
 
-movementBetweenFrames :: Int -> Int -> Frame -> Frame -> Array (Int, Int) Vector
-movementBetweenFrames width height frame1 frame2 =
-  let centres1 = centresOfGravity width height frame1
-      centres2 = centresOfGravity width height frame2
+movementBetweenFrames :: BoxDimensions -> Int -> Int -> Frame -> Frame -> Array (Int, Int) Vector
+movementBetweenFrames boxDimensions width height frame1 frame2 =
+  let centres1 = centresOfGravity boxDimensions width height frame1
+      centres2 = centresOfGravity boxDimensions width height frame2
   in
     movementVectors centres1 centres2
 
@@ -46,28 +46,26 @@ xyDiff (x1,y1) (x2,y2) = XYVector {
   yDelta = y2 - y1
   }
 
-
-
--- TODO Also compute movement with coarser-grained boxes, and compare the fine-grained movement with the coarse-grained movement
-
-centresOfGravity :: Int -> Int -> Frame -> Array (Int, Int) (Double, Double)
-centresOfGravity width height frame  =
-  let arrayWidth = width `div` boxWidth
-      arrayHeight = height `div` boxHeight
+centresOfGravity :: BoxDimensions -> Int -> Int -> Frame -> Array (Int, Int) (Double, Double)
+centresOfGravity boxDimensions width height frame  =
+  let arrayWidth = width `div` (boxWidth boxDimensions)
+      arrayHeight = height `div` (boxHeight boxDimensions)
       bounds' = ((0,0), (arrayWidth - 1, arrayHeight - 1))
       boxIndices = range bounds'
-      centresOfGravity' = (map (\ix -> getCentreOfGravityForBox width frame ix) boxIndices) :: [(Double, Double)]
+      centresOfGravity' = (map (\ix -> getCentreOfGravityForBox boxDimensions width frame ix) boxIndices) :: [(Double, Double)]
   in
     array bounds' (zip boxIndices centresOfGravity')
 
-getCentreOfGravityForBox :: Int -> Frame -> (Int, Int) -> (Double, Double)
-getCentreOfGravityForBox width frame (x, y) =
+getCentreOfGravityForBox :: BoxDimensions -> Int -> Frame -> (Int, Int) -> (Double, Double)
+getCentreOfGravityForBox boxDimensions width frame (x, y) =
   let yPlane' = yPlane frame -- Effectively the greyscale image
-      topLeftPixelOfBox = (boxWidth * x, boxHeight * y)
-      bottomRightPixelOfBox = ((x + 1) * boxWidth - 1, (y + 1) *  boxHeight - 1)
+      boxWidth' = boxWidth boxDimensions
+      boxHeight' = boxHeight boxDimensions
+      topLeftPixelOfBox = (boxWidth' * x, boxHeight' * y)
+      bottomRightPixelOfBox = ((x + 1) * boxWidth' - 1, (y + 1) *  boxHeight' - 1)
       pixelCoordsForBox = (range (topLeftPixelOfBox, bottomRightPixelOfBox)) :: [(Int, Int)]
       valuesForThosePixels = map (\ix -> yPlane' `B.index` (fromIntegral (flattenIndex width ix))) pixelCoordsForBox
-      relativeCoordinates = range ((0, 0), (boxWidth - 1, boxHeight - 1))
+      relativeCoordinates = range ((0, 0), (boxWidth' - 1, boxHeight' - 1))
       weightedCoordinates = zipWith weightedCoordinate relativeCoordinates valuesForThosePixels
       weightedAverageCoordinate = averageWeightedCoordinates weightedCoordinates
   in

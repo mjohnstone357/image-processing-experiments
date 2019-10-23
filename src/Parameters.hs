@@ -1,14 +1,19 @@
 module Parameters where
 
-boxWidth :: Int
-boxWidth = 8
+data BoxDimensions = BoxDimensions {
+  boxWidth :: Int,
+  boxHeight :: Int
+  }
 
-boxHeight :: Int
-boxHeight = 8
 
--- In terms of small boxes
-bigBoxWidth :: Int
-bigBoxWidth = 4
+smallBox :: BoxDimensions
+smallBox = BoxDimensions {
+  boxWidth = 8,
+  boxHeight = 8
+  }
 
-bigBoxHeight :: Int
-bigBoxHeight = 4
+largeBox :: BoxDimensions
+largeBox = BoxDimensions {
+  boxWidth = 16,
+  boxHeight = 16
+  }
