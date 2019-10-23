@@ -1,6 +1,9 @@
 module Vector where
 
+import Data.Array
 import Numeric
+
+data VectorArray v = VectorArray (Array (Int, Int) v)
 
 data Vector = Vector {
   magnitude :: Double,

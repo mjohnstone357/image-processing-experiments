@@ -4,15 +4,15 @@ import Data.Array
 
 import Lib(Frame(..))
 import TimeToLive(TTLArray(..), renewTTLs)
-import Movement(computeMovementArray)
+import Detection(computeDetectionsArray)
 import Parameters(smallBox)
 
 data HighlightsArray = HighlightsArray (Array (Int, Int) Bool)
 
 computeHighlights :: TTLArray -> Int -> Int -> (Frame, Frame) -> (HighlightsArray, TTLArray)
 computeHighlights ttlArray width height framePair =
-  let currentMovementArray = computeMovementArray smallBox width height framePair
-      newTTLArray = renewTTLs ttlArray currentMovementArray
+  let currentDetectionsArray = computeDetectionsArray smallBox width height framePair
+      newTTLArray = renewTTLs ttlArray currentDetectionsArray
       highlightsArray = resolveTTLs newTTLArray
   in
     (highlightsArray, newTTLArray)

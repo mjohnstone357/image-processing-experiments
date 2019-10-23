@@ -3,7 +3,7 @@ module TimeToLive where
 import Data.Array
 
 import Parameters
-import Movement(MovementsArray(..))
+import Detection(DetectionsArray(..))
 
 data TTLArray = TTLArray (Array (Int, Int) Int)
 
@@ -18,8 +18,8 @@ initialTTLArray boxDimensions width height =
   in
     TTLArray $ array bounds' values'
 
-renewTTLs :: TTLArray -> MovementsArray -> TTLArray
-renewTTLs (TTLArray ttlArray) (MovementsArray movementsArray) =
+renewTTLs :: TTLArray -> DetectionsArray -> TTLArray
+renewTTLs (TTLArray ttlArray) (DetectionsArray movementsArray) =
   let bounds' = bounds ttlArray
       indices' = indices ttlArray
       ttlValues = elems ttlArray
