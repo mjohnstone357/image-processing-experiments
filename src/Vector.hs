@@ -15,6 +15,20 @@ data XYVector = XYVector {
   yDelta :: Double
   } deriving (Show)
 
+subtractVector :: XYVector -> XYVector -> XYVector
+subtractVector v1 v2 =
+  XYVector {
+  xDelta = xDelta v1 - xDelta v2,
+  yDelta = yDelta v1 - yDelta v2
+  }
+
+vectorMagnitude :: XYVector -> Double
+vectorMagnitude v =
+  let deltaX' = xDelta v
+      deltaY' = yDelta v
+      theNumberTwo = 2 :: Int
+  in sqrt (deltaX' ^ theNumberTwo + deltaY' ^ theNumberTwo)
+
 renderFloat :: Double -> String
 renderFloat num = showFFloat Nothing num ""
 

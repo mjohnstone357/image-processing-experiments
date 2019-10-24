@@ -6,36 +6,30 @@ import Data.Word(Word8)
 
 import Lib(Frame(..))
 import Parameters(BoxDimensions(..))
-import Vector(Vector(..), XYVector(..), movementVector, VectorArray(..))
+import Vector(XYVector(..), VectorArray(..))
 
-xyMovementBetweenFrames :: BoxDimensions -> Int -> Int -> Frame -> Frame -> Array (Int, Int) XYVector
+xyMovementBetweenFrames :: BoxDimensions -> Int -> Int -> Frame -> Frame -> VectorArray XYVector
 xyMovementBetweenFrames boxDimensions width height frame1 frame2 =
   let centres1 = centresOfGravity boxDimensions width height frame1
       centres2 = centresOfGravity boxDimensions width height frame2
   in
     movementXYVectors centres1 centres2
 
-movementBetweenFrames :: BoxDimensions -> Int -> Int -> Frame -> Frame -> VectorArray Vector
+movementBetweenFrames :: BoxDimensions -> Int -> Int -> Frame -> Frame -> VectorArray XYVector
 movementBetweenFrames boxDimensions width height frame1 frame2 =
   let centres1 = centresOfGravity boxDimensions width height frame1
       centres2 = centresOfGravity boxDimensions width height frame2
   in
-    movementVectors centres1 centres2
+    movementXYVectors centres1 centres2
 
-movementVectors :: Array (Int, Int) (Double, Double) -> Array (Int, Int) (Double, Double) -> VectorArray Vector
-movementVectors a1 a2 =
-  let initialResultArray = movementXYVectors a1 a2
-  in
-    VectorArray $ fmap movementVector initialResultArray
-
-movementXYVectors :: Array (Int, Int) (Double, Double) -> Array (Int, Int) (Double, Double) -> Array (Int, Int) XYVector
+movementXYVectors :: Array (Int, Int) (Double, Double) -> Array (Int, Int) (Double, Double) -> VectorArray XYVector
 movementXYVectors array1 array2 =
   let indices' = indices array1
       bounds' = bounds array1
       xyVectors = computeXYVectors (elems array1) (elems array2)
       indicesToVectors = zip indices' xyVectors
   in
-    array bounds' indicesToVectors
+    VectorArray $ array bounds' indicesToVectors
 
 computeXYVectors :: [(Double, Double)] -> [(Double, Double)] -> [XYVector]
 computeXYVectors = zipWith xyDiff
